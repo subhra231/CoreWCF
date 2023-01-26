@@ -11,7 +11,7 @@ namespace CoreWCF.Channels
     {
         public static string GetEndpointUrl(string accountName, string queueName)
         {
-            return $"https://{accountName}.queue.core.windows.net/{queueName}";
+            return $"net.aqs://{accountName}.queue.core.windows.net/{queueName}";
         }
 
         public static string GetAzureQueueStorageQueueName(Uri endpoint)

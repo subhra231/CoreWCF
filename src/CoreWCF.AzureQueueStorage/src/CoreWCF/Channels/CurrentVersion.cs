@@ -8,6 +8,6 @@ namespace CoreWCF.Channels
     /// </summary>
     internal static class CurrentVersion
     {
-        internal const string Scheme = "soap.amqp";
+        internal const string Scheme = "soap.aqs";
     }
 }
