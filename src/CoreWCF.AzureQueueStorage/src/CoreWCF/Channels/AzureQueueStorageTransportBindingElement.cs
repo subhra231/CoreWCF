@@ -50,17 +50,7 @@ namespace CoreWCF.Channels
         {
             var serviceDispatcher = context.BindingParameters.Find<IServiceDispatcher>();
             var serviceProvider = context.BindingParameters.Find<IServiceProvider>();
-            CreateQueue(serviceDispatcher.BaseAddress);
             return new AzureQueueStorageQueueTransport(serviceDispatcher, serviceProvider);
-        }
-
-        private void CreateQueue(Uri localAddress)
-        {
-            var queueName = AzureQueueStorageQueueNameConverter.GetAzureQueueStorageQueueName(localAddress);
-            //if (!_.Exists(queueName))
-            {
-              //  MessageQueue.Create(queueName);
-            }
         }
 
         /// <summary>

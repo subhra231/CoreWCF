@@ -11,14 +11,14 @@ namespace CoreWCF.AzureQueueStorage.Tests.Helpers
         public static Stream GetTestMessage()
         {
              string currentDirectory = Environment.CurrentDirectory;
-              string path = Path.Combine(currentDirectory, "Resources/msmqTestMessage.bin");
+              string path = Path.Combine(currentDirectory, "Resources/aqsTestMessage.bin");
               return File.OpenRead(path);
         }
 
         public static Stream GetEmptyTestMessage()
         {
             string currentDirectory = Environment.CurrentDirectory;
-            string path = Path.Combine(currentDirectory, "Resources/msmqEmptyTestMessage.bin");
+            string path = Path.Combine(currentDirectory, "Resources/aqsEmptyTestMessage.bin");
             return File.OpenRead(path);
         }
 
