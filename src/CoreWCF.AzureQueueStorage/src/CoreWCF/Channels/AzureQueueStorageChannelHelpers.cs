@@ -43,7 +43,7 @@ namespace CoreWCF.Channels
         {
             if (timeout < TimeSpan.Zero)
             {
-                throw new ArgumentOutOfRangeException("timeout", timeout, "Timeout must be greater than or equal to TimeSpan.Zero. To disable timeout, specify TimeSpan.MaxValue.");
+                throw new ArgumentOutOfRangeException(nameof(timeout), timeout, "Timeout must be greater than or equal to TimeSpan.Zero. To disable timeout, specify TimeSpan.MaxValue.");
             }
         }
     }

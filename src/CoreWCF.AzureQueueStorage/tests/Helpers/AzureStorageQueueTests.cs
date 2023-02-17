@@ -65,7 +65,7 @@ namespace CoreWCF.AzureQueueStorage.Tests.Helpers
         [Fact]
         public void AzureQueueStorageQueueNameConverter_GetEndpointUrl()
         {
-            Assert.Equal("net.aqs://account.queue.core.windows.net/Queue", AzureQueueStorageQueueNameConverter.GetEndpointUrl("account", "Queue");
+            Assert.Equal("net.aqs://account.queue.core.windows.net/Queue", AzureQueueStorageQueueNameConverter.GetEndpointUrl("account", "Queue"));
         }
     }
 }
