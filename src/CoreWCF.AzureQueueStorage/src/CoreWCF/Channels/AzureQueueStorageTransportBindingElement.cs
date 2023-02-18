@@ -37,11 +37,6 @@ namespace CoreWCF.Channels
                 throw DiagnosticUtility.ExceptionUtility.ThrowHelperArgumentNull(nameof(context));
             }
 
-            if (typeof(T) == typeof(ISecurityCapabilities))
-            {
-                return null;
-            }
-
             return base.GetProperty<T>(context);
         }
 

@@ -62,23 +62,5 @@ namespace CoreWCF.Channels
                 _messageBuffer = new ArraySegment<byte>();
             }
         }
-
-        /// <summary>
-        /// Address the Message and serialize it into a byte array.
-        /// </summary>
-        /*private ArraySegment<byte> EncodeMessage(Message message)
-        {
-        // TODO
-            try
-            {
-                //this._remoteAddress.ApplyTo(message);
-                //return _encoder.WriteMessage(message, int.MaxValue, _parent.BufferManager);
-            }
-            finally
-            {
-                // We have consumed the message by serializing it, so clean up
-                message.Close();
-            }
-        }*/
     }
 }
