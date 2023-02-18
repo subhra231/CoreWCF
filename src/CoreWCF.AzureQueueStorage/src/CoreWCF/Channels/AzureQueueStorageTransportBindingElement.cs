@@ -19,6 +19,11 @@ namespace CoreWCF.Channels
         {
         }
 
+        protected AzureQueueStorageTransportBindingElement(AzureQueueStorageTransportBindingElement other) : base(other) 
+        {
+            MaxReceivedMessageSize = other.MaxReceivedMessageSize;
+        }
+
         public override BindingElement Clone()
         {
             return new AzureQueueStorageTransportBindingElement();
