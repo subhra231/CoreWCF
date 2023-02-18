@@ -18,7 +18,7 @@ using Microsoft.Extensions.Logging;
 
 namespace CoreWCF.Channels
 {
-    public class AzureQueueStorageQueueTransport : IQueueTransport
+    internal class AzureQueueStorageQueueTransport : IQueueTransport
     {
         private readonly string _connectionString;
         private readonly string _queueName;

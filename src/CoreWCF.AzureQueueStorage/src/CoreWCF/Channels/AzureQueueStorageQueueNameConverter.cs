@@ -18,7 +18,7 @@ namespace CoreWCF.Channels
         {
             string uriLocalPath = endpoint.LocalPath; //check if this should be absolute path
             int startIndex = uriLocalPath.LastIndexOf("/", StringComparison.InvariantCultureIgnoreCase);
-            int length = uriLocalPath.Length - uriLocalPath.LastIndexOf("/", StringComparison.InvariantCultureIgnoreCase) - 1;
+            int length = uriLocalPath.Length - startIndex - 1;
             string queueName = uriLocalPath.Substring(startIndex, length);
             return queueName;
         }
