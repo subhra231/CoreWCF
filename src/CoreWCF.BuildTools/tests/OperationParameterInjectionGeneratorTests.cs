@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -15,7 +16,7 @@ using Microsoft.CodeAnalysis.Testing;
 using Microsoft.CodeAnalysis.Text;
 using Xunit;
 
-using VerifyCS = CSharpGeneratorVerifier<CoreWCF.BuildTools.OperationParameterInjectionGenerator>;
+using VerifyGenerator = CSharpGeneratorVerifier<CoreWCF.BuildTools.OperationParameterInjectionGenerator>;
 
 namespace CoreWCF.BuildTools.Tests
 {
@@ -39,7 +40,7 @@ namespace CoreWCF.BuildTools.Tests
         [MemberData(nameof(GetTestVariations))]
         public async Task BasicTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -102,9 +103,377 @@ namespace MyProject
 
         [Theory]
         [MemberData(nameof(GetTestVariations))]
+        public async Task AttributeTypedConstantsSupport(string attributeNamespace, string attribute)
+        {
+            var test = new VerifyGenerator.Test
+            {
+                TestState =
+                {
+                    Sources =
+                    {
+@$"
+namespace MyProject
+{{
+    [{attributeNamespace}.ServiceContract]
+    public interface IIdentityService
+    {{
+        [{attributeNamespace}.OperationContract]
+        string Echo(string input);
+
+        [{attributeNamespace}.OperationContract]
+        string Echo2(string input);
+    }}
+
+    public partial class IdentityService : IIdentityService
+    {{
+        public string Echo(string input) => input;
+        [CoreWCF.OpenApi.Attributes.OpenApiResponse(ContentTypes = new[] {{ ""application/json"", ""text/xml"" }}, Description = ""Success"", StatusCode = System.Net.HttpStatusCode.OK, Type = typeof(string))]
+        public string Echo2(string input, [{attribute}] object a) => input;
+    }}
+}}
+"
+                    },
+                    GeneratedSources =
+                    {
+                        (typeof(OperationParameterInjectionGenerator), "MyProject_IIdentityService_Echo2.g.cs", SourceText.From(@$"
+using System;
+using Microsoft.Extensions.DependencyInjection;
+namespace MyProject
+{{
+    public partial class IdentityService
+    {{
+        [CoreWCF.OpenApi.Attributes.OpenApiResponseAttribute(ContentTypes = {{""application/json"", ""text/xml""}}, Description = ""Success"", StatusCode = System.Net.HttpStatusCode.OK, Type = typeof(string))]
+        public string Echo2(string input)
+        {{
+            var serviceProvider = CoreWCF.OperationContext.Current.InstanceContext.Extensions.Find<IServiceProvider>();
+            if (serviceProvider == null) throw new InvalidOperationException(""Missing IServiceProvider in InstanceContext extensions"");
+            if (CoreWCF.OperationContext.Current.InstanceContext.IsSingleton)
+            {{
+                using (var scope = serviceProvider.CreateScope())
+                {{
+                    var d0 = scope.ServiceProvider.GetService<object>();
+                    return Echo2(input, d0);
+                }}
+            }}
+            var e0 = serviceProvider.GetService<object>();
+            return Echo2(input, e0);
+        }}
+    }}
+}}
+", Encoding.UTF8, SourceHashAlgorithm.Sha256)),
+                    },
+                },
+            };
+
+            await test.RunAsync();
+        }
+
+        [Theory]
+        [MemberData(nameof(GetTestVariations))]
+        public async Task MethodOverloadsTests(string attributeNamespace, string attribute)
+        {
+            var test = new VerifyGenerator.Test
+            {
+                TestState =
+                {
+                    Sources =
+                    {
+@$"
+namespace MyProject
+{{
+    [{attributeNamespace}.ServiceContract]
+    public interface IIdentityService
+    {{
+        [{attributeNamespace}.OperationContract]
+        int Echo(int input);
+
+        [{attributeNamespace}.OperationContract(Name = ""EchoString"")]
+        string Echo(string input);
+    }}
+
+    public partial class IdentityService : IIdentityService
+    {{
+        public int Echo(int input, [{attribute}] object a) => input;
+        public string Echo(string input, [{attribute}] object a) => input;
+    }}
+}}
+"
+                    },
+                    GeneratedSources =
+                    {
+                        (typeof(OperationParameterInjectionGenerator), "MyProject_IIdentityService_Echo.g.cs", SourceText.From(@$"
+using System;
+using Microsoft.Extensions.DependencyInjection;
+namespace MyProject
+{{
+    public partial class IdentityService
+    {{
+        public int Echo(int input)
+        {{
+            var serviceProvider = CoreWCF.OperationContext.Current.InstanceContext.Extensions.Find<IServiceProvider>();
+            if (serviceProvider == null) throw new InvalidOperationException(""Missing IServiceProvider in InstanceContext extensions"");
+            if (CoreWCF.OperationContext.Current.InstanceContext.IsSingleton)
+            {{
+                using (var scope = serviceProvider.CreateScope())
+                {{
+                    var d0 = scope.ServiceProvider.GetService<object>();
+                    return Echo(input, d0);
+                }}
+            }}
+            var e0 = serviceProvider.GetService<object>();
+            return Echo(input, e0);
+        }}
+    }}
+}}
+", Encoding.UTF8, SourceHashAlgorithm.Sha256)),
+                        (typeof(OperationParameterInjectionGenerator), "MyProject_IIdentityService_EchoString.g.cs", SourceText.From(@$"
+using System;
+using Microsoft.Extensions.DependencyInjection;
+namespace MyProject
+{{
+    public partial class IdentityService
+    {{
+        public string Echo(string input)
+        {{
+            var serviceProvider = CoreWCF.OperationContext.Current.InstanceContext.Extensions.Find<IServiceProvider>();
+            if (serviceProvider == null) throw new InvalidOperationException(""Missing IServiceProvider in InstanceContext extensions"");
+            if (CoreWCF.OperationContext.Current.InstanceContext.IsSingleton)
+            {{
+                using (var scope = serviceProvider.CreateScope())
+                {{
+                    var d0 = scope.ServiceProvider.GetService<object>();
+                    return Echo(input, d0);
+                }}
+            }}
+            var e0 = serviceProvider.GetService<object>();
+            return Echo(input, e0);
+        }}
+    }}
+}}
+", Encoding.UTF8, SourceHashAlgorithm.Sha256))
+                    },
+                },
+            };
+
+            await test.RunAsync();
+        }
+
+        [Theory]
+        [MemberData(nameof(GetTestVariations))]
+        public async Task BasicTestsWithAuthorizeAttribute(string attributeNamespace, string attribute)
+        {
+            var test = new VerifyGenerator.Test
+            {
+                TestState =
+                {
+                    Sources =
+                    {
+@$"
+namespace MyProject
+{{
+    [{attributeNamespace}.ServiceContract]
+    public interface IIdentityService
+    {{
+        [{attributeNamespace}.OperationContract]
+        string Echo(string input);
+
+        [{attributeNamespace}.OperationContract]
+        string Echo2(string input);
+    }}
+
+    public partial class IdentityService : IIdentityService
+    {{
+        public string Echo(string input) => input;
+        [Microsoft.AspNetCore.Authorization.Authorize(Policy = ""MyPolicy"")]
+        public string Echo2(string input, [{attribute}] object a) => input;
+    }}
+}}
+"
+                    },
+                    GeneratedSources =
+                    {
+                        (typeof(OperationParameterInjectionGenerator), "MyProject_IIdentityService_Echo2.g.cs", SourceText.From(@$"
+using System;
+using Microsoft.Extensions.DependencyInjection;
+namespace MyProject
+{{
+    public partial class IdentityService
+    {{
+        [Microsoft.AspNetCore.Authorization.AuthorizeAttribute(Policy = ""MyPolicy"")]
+        public string Echo2(string input)
+        {{
+            var serviceProvider = CoreWCF.OperationContext.Current.InstanceContext.Extensions.Find<IServiceProvider>();
+            if (serviceProvider == null) throw new InvalidOperationException(""Missing IServiceProvider in InstanceContext extensions"");
+            if (CoreWCF.OperationContext.Current.InstanceContext.IsSingleton)
+            {{
+                using (var scope = serviceProvider.CreateScope())
+                {{
+                    var d0 = scope.ServiceProvider.GetService<object>();
+                    return Echo2(input, d0);
+                }}
+            }}
+            var e0 = serviceProvider.GetService<object>();
+            return Echo2(input, e0);
+        }}
+    }}
+}}
+", Encoding.UTF8, SourceHashAlgorithm.Sha256)),
+                    },
+                },
+            };
+
+            await test.RunAsync();
+        }
+
+        [Theory]
+        [MemberData(nameof(GetTestVariations))]
+        public async Task BasicTestsWithAuthorizeAttributeResolveConstantValue(string attributeNamespace, string attribute)
+        {
+            var test = new VerifyGenerator.Test
+            {
+                TestState =
+                {
+                    Sources =
+                    {
+@$"
+namespace MyProject
+{{
+    public static class Constants
+    {{
+        public const string MyPolicy = ""MyPolicy"";
+    }}
+
+    [{attributeNamespace}.ServiceContract]
+    public interface IIdentityService
+    {{
+        [{attributeNamespace}.OperationContract]
+        string Echo(string input);
+
+        [{attributeNamespace}.OperationContract]
+        string Echo2(string input);
+    }}
+
+    public partial class IdentityService : IIdentityService
+    {{
+        public string Echo(string input) => input;
+        [Microsoft.AspNetCore.Authorization.Authorize(Policy = Constants.MyPolicy)]
+        public string Echo2(string input, [{attribute}] object a) => input;
+    }}
+}}
+"
+                    },
+                    GeneratedSources =
+                    {
+                        (typeof(OperationParameterInjectionGenerator), "MyProject_IIdentityService_Echo2.g.cs", SourceText.From(@$"
+using System;
+using Microsoft.Extensions.DependencyInjection;
+namespace MyProject
+{{
+    public partial class IdentityService
+    {{
+        [Microsoft.AspNetCore.Authorization.AuthorizeAttribute(Policy = ""MyPolicy"")]
+        public string Echo2(string input)
+        {{
+            var serviceProvider = CoreWCF.OperationContext.Current.InstanceContext.Extensions.Find<IServiceProvider>();
+            if (serviceProvider == null) throw new InvalidOperationException(""Missing IServiceProvider in InstanceContext extensions"");
+            if (CoreWCF.OperationContext.Current.InstanceContext.IsSingleton)
+            {{
+                using (var scope = serviceProvider.CreateScope())
+                {{
+                    var d0 = scope.ServiceProvider.GetService<object>();
+                    return Echo2(input, d0);
+                }}
+            }}
+            var e0 = serviceProvider.GetService<object>();
+            return Echo2(input, e0);
+        }}
+    }}
+}}
+", Encoding.UTF8, SourceHashAlgorithm.Sha256)),
+                    },
+                },
+            };
+
+            await test.RunAsync();
+        }
+
+        [Theory]
+        [MemberData(nameof(GetTestVariations))]
+        public async Task BasicTestsWithAuthorizeRoleAttribute(string attributeNamespace, string attribute)
+        {
+            var test = new VerifyGenerator.Test
+            {
+                TestState =
+                {
+                    Sources =
+                    {
+@$"
+namespace MyProject
+{{
+    public static class Constants
+    {{
+        public const string MyPolicy = ""MyPolicy"";
+    }}
+
+    [{attributeNamespace}.ServiceContract]
+    public interface IIdentityService
+    {{
+        [{attributeNamespace}.OperationContract]
+        string Echo(string input);
+
+        [{attributeNamespace}.OperationContract]
+        string Echo2(string input);
+    }}
+
+    public partial class IdentityService : IIdentityService
+    {{
+        public string Echo(string input) => input;
+        [CoreWCF.AuthorizeRole(""Role1"", ""Role2"")]
+        public string Echo2(string input, [{attribute}] object a) => input;
+    }}
+}}
+"
+                    },
+                    GeneratedSources =
+                    {
+                        (typeof(OperationParameterInjectionGenerator), "MyProject_IIdentityService_Echo2.g.cs", SourceText.From(@$"
+using System;
+using Microsoft.Extensions.DependencyInjection;
+namespace MyProject
+{{
+    public partial class IdentityService
+    {{
+        [CoreWCF.AuthorizeRoleAttribute({{""Role1"", ""Role2""}})]
+        public string Echo2(string input)
+        {{
+            var serviceProvider = CoreWCF.OperationContext.Current.InstanceContext.Extensions.Find<IServiceProvider>();
+            if (serviceProvider == null) throw new InvalidOperationException(""Missing IServiceProvider in InstanceContext extensions"");
+            if (CoreWCF.OperationContext.Current.InstanceContext.IsSingleton)
+            {{
+                using (var scope = serviceProvider.CreateScope())
+                {{
+                    var d0 = scope.ServiceProvider.GetService<object>();
+                    return Echo2(input, d0);
+                }}
+            }}
+            var e0 = serviceProvider.GetService<object>();
+            return Echo2(input, e0);
+        }}
+    }}
+}}
+", Encoding.UTF8, SourceHashAlgorithm.Sha256)),
+                    },
+                },
+            };
+
+            await test.RunAsync();
+        }
+
+        [Theory]
+        [MemberData(nameof(GetTestVariations))]
         public async Task MultipleOperations(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -193,7 +562,7 @@ namespace MyProject
         [Fact]
         public async Task FromServicesAttributeShouldWorkAsUsualForMVCControllers()
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -209,11 +578,7 @@ namespace MyProject
     }}
 }}
 "
-                    },
-                    GeneratedSources =
-                    {
-
-                    },
+                    }
                 },
             };
 
@@ -223,7 +588,7 @@ namespace MyProject
         [Fact]
         public async Task FromServicesAttributeShouldWorkAsUsualForMVCControllersWhenCombinedWithInjected()
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -239,11 +604,7 @@ namespace MyProject
     }}
 }}
 "
-                    },
-                    GeneratedSources =
-                    {
-
-                    },
+                    }
                 },
             };
 
@@ -253,7 +614,7 @@ namespace MyProject
         [Fact]
         public async Task FromServicesAttributeShouldWorkAsUsualForMVCControllers_ControllerInheritance()
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -270,11 +631,7 @@ namespace MyProject
     }}
 }}
 "
-                    },
-                    GeneratedSources =
-                    {
-
-                    },
+                    }
                 },
             };
 
@@ -285,7 +642,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task HttpContextTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -357,7 +714,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task HttpRequestTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -429,7 +786,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task HttpResponseTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -501,7 +858,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task NestedClassesMultipleLevelsTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -630,7 +987,7 @@ namespace MyProject
         [InlineData(CoreWCFNamespace, MVCFromServicesAttribute, "internal ", "", "internal ", "private ")]
         public async Task NestedClassContainingTypeHierarchyAccessModifiersTests(string attributeNamespace, string attribute, string containerModifiers, string implementationModifiers, string expectedContainerModifiers, string expectedImplementationModifiers)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -701,7 +1058,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task RefParameterTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -766,7 +1123,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task OutParameterTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -835,7 +1192,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task LeadingInjectedParameterTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -903,7 +1260,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task BetweenRegularParameterTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -976,7 +1333,7 @@ namespace MyProject
         [InlineData(CoreWCFNamespace, CoreWCFInjectedAttribute, "", "internal ")]
         public async Task ServiceImplementationContainingTypeAccessModifiersTests(string attributeNamespace, string attribute, string accessModifier, string expectedAccessModifier)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1041,7 +1398,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task MultipleParametersInjectedTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1108,7 +1465,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task VoidOperationContractTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1176,7 +1533,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task ContractAndServiceWithDifferentNamespacesTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1245,7 +1602,7 @@ namespace MyProject.Implementations
         [MemberData(nameof(GetTestVariations))]
         public async Task ComposedNamespaceTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1310,7 +1667,7 @@ namespace MyProject.Dummy
         [MemberData(nameof(GetTestVariations))]
         public async Task ContractAndImplementationInSeparateFilesTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1381,7 +1738,7 @@ namespace MyProject.Dummy
         [MemberData(nameof(GetTestVariations))]
         public async Task TaskReturnTypeTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1447,7 +1804,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task GenericTaskReturnTypeTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1507,13 +1864,11 @@ namespace MyProject
             await test.RunAsync();
         }
 
-// TODO: make the in-memory assembly compilation works on .NET Framework
-#if !NETFRAMEWORK
         [Theory]
         [MemberData(nameof(GetTestVariations))]
         public async Task ServiceContractFromOtherAssemblyTests(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1561,21 +1916,12 @@ namespace MyProject
                 },
             };
 
-            test.TestState.AdditionalReferences.Add(BuildInMemoryAssembly());
+            test.TestState.AdditionalReferences.Add(await BuildInMemoryAssembly());
 
             await test.RunAsync();
 
-            MetadataReference BuildInMemoryAssembly()
+            async Task<MetadataReference> BuildInMemoryAssembly()
             {
-                List<MetadataReference> references = new List<MetadataReference>
-                {
-                    MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-                    MetadataReference.CreateFromFile(Assembly.Load(new AssemblyName("netstandard")).Location),
-                    MetadataReference.CreateFromFile(Assembly.Load(new AssemblyName("System.Runtime")).Location),
-                    MetadataReference.CreateFromFile(typeof(System.ServiceModel.ServiceContractAttribute).Assembly.Location),
-                    MetadataReference.CreateFromFile(typeof(CoreWCF.ServiceContractAttribute).Assembly.Location)
-                };
-
                 string code = @$"
 namespace MyProject
 {{
@@ -1590,30 +1936,33 @@ namespace MyProject
 }}
 ";
 
+                var references =
+                    await ReferenceAssembliesHelper.Default.Value.ResolveAsync(LanguageNames.CSharp,
+                        CancellationToken.None);
+
                 CSharpCompilation compilation = CSharpCompilation.Create(
                     "MyProject",
                     new[]
                     {
                         CSharpSyntaxTree.ParseText(code)
                     },
-                    references.ToArray(),
+                    references.Union(new [] { MetadataReference.CreateFromFile(typeof(CoreWCF.ServiceContractAttribute).Assembly.Location) }),
                     new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
                 );
 
-                using MemoryStream memoryStream1 = new MemoryStream();
+                using MemoryStream memoryStream1 = new();
                 EmitResult emitResult1 = compilation.Emit(memoryStream1);
                 memoryStream1.Position = 0;
 
                 return MetadataReference.CreateFromStream(memoryStream1);
             }
         }
-#endif
 
         [Theory]
         [MemberData(nameof(GetTestVariations))]
         public async Task ShouldRaiseCompilationErrorWhenServiceImplementationIsNotPartial(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1643,7 +1992,7 @@ namespace MyProject
                     GeneratedSources = { },
                     ExpectedDiagnostics =
                     {
-                        new DiagnosticResult(DiagnosticDescriptors.ParentClassShouldBePartialError)
+                        new DiagnosticResult(DiagnosticDescriptors.OperationParameterInjectionGenerator_01XX.ParentClassShouldBePartialError)
                             .WithDefaultPath("/0/Test0.cs")
                             .WithSpan(14, 18, 14, 33)
                             .WithArguments("IdentityService", "Echo2")
@@ -1658,7 +2007,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task ShouldRaiseCompilationErrorWhenParentClassOfServiceImplementationIsNotPartial(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1691,7 +2040,7 @@ namespace MyProject
                     GeneratedSources = { },
                     ExpectedDiagnostics =
                     {
-                        new DiagnosticResult(DiagnosticDescriptors.ParentClassShouldBePartialError)
+                        new DiagnosticResult(DiagnosticDescriptors.OperationParameterInjectionGenerator_01XX.ParentClassShouldBePartialError)
                             .WithDefaultPath("/0/Test0.cs")
                             .WithSpan(14, 18, 14, 28)
                             .WithArguments("ContainerA", "Echo2")
@@ -1706,7 +2055,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task ShouldRaiseCompilationErrorWhenGrandParentClassOfServiceImplementationIsNotPartial(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1742,7 +2091,7 @@ namespace MyProject
                     GeneratedSources = { },
                     ExpectedDiagnostics =
                     {
-                        new DiagnosticResult(DiagnosticDescriptors.ParentClassShouldBePartialError)
+                        new DiagnosticResult(DiagnosticDescriptors.OperationParameterInjectionGenerator_01XX.ParentClassShouldBePartialError)
                             .WithSpan(14, 18, 14, 28)
                             .WithArguments("ContainerA", "Echo2")
                             .WithDefaultPath("/0/Test0.cs"),
@@ -1757,7 +2106,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task ShouldNotRaiseCompilationErrorWhenServiceImplementationIsNotPartialButImplementedInterfaceIsNotAServiceContract(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1795,7 +2144,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task ShouldNotRaiseCompilationErrorWhenParentClassOfServiceImplementationIsNotPartialButImplementedInterfaceIsNotAServiceContract(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1836,7 +2185,7 @@ namespace MyProject
         [MemberData(nameof(GetTestVariations))]
         public async Task ShouldNotRaiseCompilationErrorWhenGrandParentClassOfServiceImplementationIsNotPartialButImplementedInterfaceIsNotAServiceContract(string attributeNamespace, string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1881,7 +2230,7 @@ namespace MyProject
         [InlineData(MVCFromServicesAttribute)]
         public async Task ShouldNotRaiseCompilationErrorWhenParentClassImplementAnInterfaceWithoutServiceContractAttribute(string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
@@ -1918,7 +2267,7 @@ namespace MyProject
         [InlineData(MVCFromServicesAttribute)]
         public async Task ShouldNotRaiseCompilationErrorWhenParentClassDoesNotImplementOrInheritAnInterfaceWithtServiceContractAttribute(string attribute)
         {
-            var test = new VerifyCS.Test
+            var test = new VerifyGenerator.Test
             {
                 TestState =
                 {
