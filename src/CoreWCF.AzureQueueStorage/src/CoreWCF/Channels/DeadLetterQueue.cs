@@ -13,7 +13,6 @@ namespace CoreWCF.Channels
     internal class DeadLetterQueue : IQueueBase
     {
         private QueueClient _client;
-        private ArraySegment<byte> _messageBuffer;
 
         public DeadLetterQueue(string connectionString, string queueName)
         {
@@ -34,6 +33,7 @@ namespace CoreWCF.Channels
 
         public async Task SendMessageAsync(Message requestMessage)
         {
+            ArraySegment<byte> _messageBuffer;
             TimeSpan timeSpan = default;
             CancellationTokenSource cts = new(timeSpan);
 
@@ -49,17 +49,12 @@ namespace CoreWCF.Channels
             }
             finally
             {
-                CleanupBuffer();
+                if (_messageBuffer.Array != null)
+                {
+                    //_parent.BufferManager.ReturnBuffer(_messageBuffer.Array); //TODO get parent property passed in here
+                    _messageBuffer = default;
+                }
                 cts.Dispose();
-            }
-        }
-
-        private void CleanupBuffer()
-        {
-            if (_messageBuffer.Array != null)
-            {
-                //_parent.BufferManager.ReturnBuffer(_messageBuffer.Array); //TODO get parent property passed in here
-                _messageBuffer = default;
             }
         }
     }

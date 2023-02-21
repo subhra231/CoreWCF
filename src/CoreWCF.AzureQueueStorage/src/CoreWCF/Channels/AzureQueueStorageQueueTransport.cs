@@ -32,6 +32,7 @@ namespace CoreWCF.Channels
             _deadLetterQueueClient = serviceProvider.GetRequiredService<DeadLetterQueue>();
             _logger = serviceProvider.GetRequiredService<ILogger<AzureQueueStorageQueueTransport>>();
             _baseAddress = serviceDispatcher.BaseAddress;
+            _receiveMessagevisibilityTimeout = TransportDefaults.ReceiveMessagevisibilityTimeout;
         }
 
         public int ConcurrencyLevel => 1;
