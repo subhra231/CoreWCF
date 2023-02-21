@@ -44,7 +44,7 @@ namespace CoreWCF.AzureQueueStorage.Tests
             services.AddSingleton<TestService>();
             services.AddServiceModelServices();
             services.AddQueueTransport(x => { x.ConcurrencyLevel = 1; });
-            services.AddServiceModelAzureQueueStorageSupport();
+            // get connection string from settings and add queue client
         }
 
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)

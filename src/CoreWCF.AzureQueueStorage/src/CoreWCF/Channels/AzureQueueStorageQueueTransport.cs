@@ -22,7 +22,6 @@ namespace CoreWCF.Channels
     {
         private MessageQueue _queueClient;
         private DeadLetterQueue _deadLetterQueueClient;
-        private TimeSpan _queueReceiveTimeOut;
         private TimeSpan _receiveMessagevisibilityTimeout;
         private ILogger<AzureQueueStorageQueueTransport> _logger;
         private Uri _baseAddress;
@@ -31,7 +30,6 @@ namespace CoreWCF.Channels
         {
             _queueClient = serviceProvider.GetRequiredService<MessageQueue>();
             _deadLetterQueueClient = serviceProvider.GetRequiredService<DeadLetterQueue>();
-            _queueReceiveTimeOut = serviceDispatcher.Binding.ReceiveTimeout;
             _logger = serviceProvider.GetRequiredService<ILogger<AzureQueueStorageQueueTransport>>();
             _baseAddress = serviceDispatcher.BaseAddress;
         }

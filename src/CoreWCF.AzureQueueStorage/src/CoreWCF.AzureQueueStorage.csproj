@@ -18,4 +18,8 @@
     <ProjectReference Include="..\..\CoreWCF.Queue\src\CoreWCF.Queue.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="CoreWCF\Configuration\" />
+  </ItemGroup>
+
 </Project>
