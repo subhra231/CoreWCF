@@ -12,6 +12,8 @@ namespace CoreWCF.Channels
 {
     public class AzureQueueStorageTransportBindingElement : QueueBaseTransportBindingElement
     {
+        private long _maxReceivedMessageSize;
+
         /// <summary>
         /// Creates a new instance of the AzureQueueStorageTransportBindingElement Class using the default protocol.
         /// </summary>
@@ -64,7 +66,18 @@ namespace CoreWCF.Channels
         /// <summary>
         /// The largest receivable encoded message
         /// </summary>
-        public override long MaxReceivedMessageSize { get; set; }
+        public override long MaxReceivedMessageSize
+        {
+            get { return _maxReceivedMessageSize;  }
+            set
+            {
+                if (value > 8000L)
+                {
+                    throw new ArgumentException("MaxReceivedMessageSize must not be more than 64K.");
+                }
+                _maxReceivedMessageSize = value;
+            }
+        }
 
     }
 }
