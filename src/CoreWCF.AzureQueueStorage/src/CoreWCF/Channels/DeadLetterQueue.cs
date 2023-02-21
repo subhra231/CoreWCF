@@ -59,7 +59,7 @@ namespace CoreWCF.Channels
             if (_messageBuffer.Array != null)
             {
                 //_parent.BufferManager.ReturnBuffer(_messageBuffer.Array); //TODO get parent property passed in here
-                _messageBuffer = new ArraySegment<byte>();
+                _messageBuffer = default;
             }
         }
     }
