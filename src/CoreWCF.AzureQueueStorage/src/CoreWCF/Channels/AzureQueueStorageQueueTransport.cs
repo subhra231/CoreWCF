@@ -3,15 +3,11 @@
 
 using System;
 using System.Buffers;
-using System.Collections.Generic;
 using System.IO.Pipelines;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Azure.Storage.Queues;
 using Azure.Storage.Queues.Models;
 using CoreWCF.Configuration;
-using CoreWCF.Queue;
 using CoreWCF.Queue.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;

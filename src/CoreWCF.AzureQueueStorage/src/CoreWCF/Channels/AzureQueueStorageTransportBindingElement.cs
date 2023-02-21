@@ -2,11 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Net;
 using CoreWCF.Configuration;
 using CoreWCF.Queue.Common;
 using CoreWCF.Queue.Common.Configuration;
-using Azure.Storage.Queues;
 
 namespace CoreWCF.Channels
 {
@@ -71,9 +69,9 @@ namespace CoreWCF.Channels
             get { return _maxReceivedMessageSize;  }
             set
             {
-                if (value > 8000L)
+                if (value < 0 || value > 8000L)
                 {
-                    throw new ArgumentException("MaxReceivedMessageSize must not be more than 64K.");
+                    throw new ArgumentOutOfRangeException(nameof(MaxReceivedMessageSize), "MaxReceivedMessageSize must not be more than 64K.");
                 }
                 _maxReceivedMessageSize = value;
             }
