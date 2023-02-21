@@ -20,22 +20,20 @@ namespace CoreWCF.Channels
 {
     internal class AzureQueueStorageQueueTransport : IQueueTransport
     {
-        private readonly string _connectionString;
-        private readonly string _queueName;
-        private readonly string _deadLetterQueueConnectionString;
-        private readonly string _deadLetterQueueName;
-        private readonly QueueClient _queueClient;
-        private readonly QueueClient _deadLetterQueueClient;
-        private readonly TimeSpan _queueReceiveTimeOut;
-        private readonly TimeSpan _receiveMessagevisibilityTimeout;
-        private readonly ILogger<AzureQueueStorageQueueTransport> _logger;
+        private MessageQueue _queueClient;
+        private DeadLetterQueue _deadLetterQueueClient;
+        private TimeSpan _queueReceiveTimeOut;
+        private TimeSpan _receiveMessagevisibilityTimeout;
+        private ILogger<AzureQueueStorageQueueTransport> _logger;
+        private Uri _baseAddress;
 
         public AzureQueueStorageQueueTransport(IServiceDispatcher serviceDispatcher, IServiceProvider serviceProvider)
         {
-            _queueClient = new QueueClient(_connectionString, _queueName);
-            _deadLetterQueueClient = new QueueClient(_deadLetterQueueConnectionString, _deadLetterQueueName);
+            _queueClient = serviceProvider.GetRequiredService<MessageQueue>();
+            _deadLetterQueueClient = serviceProvider.GetRequiredService<DeadLetterQueue>();
             _queueReceiveTimeOut = serviceDispatcher.Binding.ReceiveTimeout;
             _logger = serviceProvider.GetRequiredService<ILogger<AzureQueueStorageQueueTransport>>();
+            _baseAddress = serviceDispatcher.BaseAddress;
         }
 
         public int ConcurrencyLevel => 1;
@@ -52,7 +50,7 @@ namespace CoreWCF.Channels
             }
             _queueClient.DeleteMessage(queueMessage.MessageId, queueMessage.PopReceipt);
             var reader = PipeReader.Create(new ReadOnlySequence<byte>(queueMessage.Body.ToMemory()));
-            return GetContext(reader, new EndpointAddress(_connectionString));
+            return GetContext(reader, new EndpointAddress(_baseAddress));
         }
 
         private QueueMessageContext GetContext(PipeReader reader, EndpointAddress endpointAddress)
@@ -71,7 +69,7 @@ namespace CoreWCF.Channels
             if (dispatchResult == QueueDispatchResult.Failed)
             {
                 //send message to dead letter queue
-                await _deadLetterQueueClient.SendMessageAsync(context.RequestMessage.ToString());
+                await _deadLetterQueueClient.SendMessageAsync(context.RequestMessage);
                 
             }
         }
