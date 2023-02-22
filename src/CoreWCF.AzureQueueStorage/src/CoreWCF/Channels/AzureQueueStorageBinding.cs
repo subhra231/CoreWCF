@@ -59,7 +59,7 @@ namespace CoreWCF.Channels
         /// </summary>
         public override string Scheme
         {
-            get { return CurrentVersion.Scheme; }
+            get { return _transport.Scheme; }
         }
 
 
