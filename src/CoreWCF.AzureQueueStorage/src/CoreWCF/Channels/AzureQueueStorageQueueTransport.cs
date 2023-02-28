@@ -22,17 +22,17 @@ namespace CoreWCF.Channels
     {
         private MessageQueue _queueClient;
         private DeadLetterQueue _deadLetterQueueClient;
-        private TimeSpan _receiveMessagevisibilityTimeout;
         private ILogger<AzureQueueStorageQueueTransport> _logger;
         private Uri _baseAddress;
+        private TimeSpan _receiveMessageVisibilityTimeout;
 
-        public AzureQueueStorageQueueTransport(IServiceDispatcher serviceDispatcher, IServiceProvider serviceProvider)
+        public AzureQueueStorageQueueTransport(IServiceDispatcher serviceDispatcher, IServiceProvider serviceProvider, AzureQueueStorageTransportBindingElement azureQueueStorageTransportBindingElement)
         {
             _queueClient = serviceProvider.GetRequiredService<MessageQueue>();
             _deadLetterQueueClient = serviceProvider.GetRequiredService<DeadLetterQueue>();
             _logger = serviceProvider.GetRequiredService<ILogger<AzureQueueStorageQueueTransport>>();
             _baseAddress = serviceDispatcher.BaseAddress;
-            _receiveMessagevisibilityTimeout = TransportDefaults.ReceiveMessagevisibilityTimeout;
+            _receiveMessageVisibilityTimeout = azureQueueStorageTransportBindingElement.MaxReceivedTimeout;
         }
 
         public int ConcurrencyLevel => 1;
@@ -42,7 +42,7 @@ namespace CoreWCF.Channels
             cancellationToken.ThrowIfCancellationRequested();
             _logger.LogInformation("Receiving message from Azure queue storage");
 
-            QueueMessage queueMessage = await _queueClient.ReceiveMessageAsync(_receiveMessagevisibilityTimeout, cancellationToken);
+            QueueMessage queueMessage = await _queueClient.ReceiveMessageAsync(_receiveMessageVisibilityTimeout, cancellationToken);
             if(queueMessage == null)
             {
                 return null;

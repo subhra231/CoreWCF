@@ -11,6 +11,7 @@ namespace CoreWCF.Channels
     public class AzureQueueStorageTransportBindingElement : QueueBaseTransportBindingElement
     {
         private long _maxReceivedMessageSize;
+        private TimeSpan _receiveMessagevisibilityTimeout = TransportDefaults.ReceiveMessagevisibilityTimeout;
 
         /// <summary>
         /// Creates a new instance of the AzureQueueStorageTransportBindingElement Class using the default protocol.
@@ -50,7 +51,7 @@ namespace CoreWCF.Channels
         {
             var serviceDispatcher = context.BindingParameters.Find<IServiceDispatcher>();
             var serviceProvider = context.BindingParameters.Find<IServiceProvider>();
-            return new AzureQueueStorageQueueTransport(serviceDispatcher, serviceProvider);
+            return new AzureQueueStorageQueueTransport(serviceDispatcher, serviceProvider, this);
         }
 
         /// <summary>
@@ -77,5 +78,10 @@ namespace CoreWCF.Channels
             }
         }
 
+        public TimeSpan MaxReceivedTimeout
+        {
+            get { return _receiveMessagevisibilityTimeout; }
+            set { _receiveMessagevisibilityTimeout = value; }
+        }
     }
 }
