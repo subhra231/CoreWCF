@@ -3,7 +3,11 @@
 
 using System;
 using System.Buffers;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using System.IO.Pipelines;
+using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using System.Threading.Tasks;
 using Azure.Storage.Queues.Models;
@@ -45,17 +49,24 @@ namespace CoreWCF.Channels
             }
             _queueClient.DeleteMessage(queueMessage.MessageId, queueMessage.PopReceipt);
             var reader = PipeReader.Create(new ReadOnlySequence<byte>(queueMessage.Body.ToMemory()));
-            return GetContext(reader, new EndpointAddress(_baseAddress));
+            return GetContext(reader, new EndpointAddress(_baseAddress), queueMessage);
         }
 
-        private QueueMessageContext GetContext(PipeReader reader, EndpointAddress endpointAddress)
+        private AzureQueueStorageMessageContext GetContext(PipeReader reader, EndpointAddress endpointAddress, QueueMessage queueMessage)
         {
-            var context = new QueueMessageContext
+            var context = new AzureQueueStorageMessageContext
             {
                 QueueMessageReader = reader,
                 LocalAddress = endpointAddress,
                 DispatchResultHandler = NotifyError,
             };
+
+            IDictionary<string, object> propertyDictionary = new Dictionary<string, object>
+            {
+                { "AzureQueueMessage", queueMessage }
+            };
+
+            context.SetProperties(propertyDictionary);
             return context;
         }
 
@@ -63,8 +74,10 @@ namespace CoreWCF.Channels
         {
             if (dispatchResult == QueueDispatchResult.Failed)
             {
-                //send message to dead letter queue
-                await _deadLetterQueueClient.SendMessageAsync(context.RequestMessage);
+                BinaryFormatter binaryFormatter= new();
+                MemoryStream memoryStream= new();
+                binaryFormatter.Serialize(memoryStream, context.Properties["AzureQueueMessage"]);
+                await _deadLetterQueueClient.SendMessageAsync(BinaryData.FromBytes(memoryStream.ToArray()), default);
                 
             }
         }

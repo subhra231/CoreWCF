@@ -10,6 +10,6 @@ namespace CoreWCF.Channels
         //max size of Azure Queue message can be upto 64KB
         internal const long DefaultMaxMessageSize = 8000L;
 
-        internal static readonly TimeSpan ReceiveMessagevisibilityTimeout = TimeSpan.FromSeconds(30);
+        internal static readonly TimeSpan ReceiveMessagevisibilityTimeout = TimeSpan.FromMinutes(15);
     }
 }

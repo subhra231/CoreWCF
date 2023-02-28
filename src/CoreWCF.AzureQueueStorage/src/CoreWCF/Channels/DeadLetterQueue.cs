@@ -31,16 +31,12 @@ namespace CoreWCF.Channels
             return _client.ReceiveMessageAsync(visibilityTimeout, cancellationToken);
         }
 
-        public async Task SendMessageAsync(Message requestMessage)
+        public async Task SendMessageAsync(BinaryData binaryData, TimeSpan timeSpan)
         {
-            ArraySegment<byte> _messageBuffer;
-            TimeSpan timeSpan = default;
             CancellationTokenSource cts = new(timeSpan);
 
             try
             {
-                //_messageBuffer = EncodeMessage(requestMessage);
-                BinaryData binaryData = new(new ReadOnlyMemory<byte>(_messageBuffer.Array, _messageBuffer.Offset, _messageBuffer.Count));
                 await _client.SendMessageAsync(binaryData, default, default, cts.Token).ConfigureAwait(false);
             }
             catch (Exception e)
@@ -49,11 +45,6 @@ namespace CoreWCF.Channels
             }
             finally
             {
-                if (_messageBuffer.Array != null)
-                {
-                    //_parent.BufferManager.ReturnBuffer(_messageBuffer.Array); //TODO get parent property passed in here
-                    _messageBuffer = default;
-                }
                 cts.Dispose();
             }
         }
